@@ -25,8 +25,8 @@ SimpleSwitch 2.0 (SS2) ACL Controller Application
 TODO: Diagram the table structure used here
 """
 
-from . import config, util
-from .app import SS2App
+import config, util
+from app import SS2App
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
