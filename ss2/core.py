@@ -25,7 +25,7 @@ SimpleSwitch 2.0 (SS2) Core Controller Application
 TODO: Diagram the table structure used here
 """
 
-import config, util
+import config, util, logging
 from app import SS2App
 from ryu.base import app_manager
 from ryu.controller import ofp_event
@@ -34,15 +34,31 @@ from ryu.controller.handler import set_ev_cls
 from ryu.lib.packet import ethernet, ether_types as ether, packet
 from ryu.ofproto import ofproto_v1_3
 
+from util import kill_on_exception
+
+#from faucet.valve_util import dpid_log, get_logger, kill_on_exception, get_setting
+#from faucet import valve_util
+
 class SS2Core(app_manager.RyuApp, SS2App):
     "SS2 RyuApp"
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
+    logname = 'SS2'
+    exc_logname = logname + '.exception'
+
     def __init__(self, *args, **kwargs):
         super(SS2Core, self).__init__(*args, **kwargs)
         self.config = config.read_config()
-        self.host_cache = util.HostCache(self.config.host_cache_timeout)
+        self.logs = config.read_config(section='LOGS')
 
+        # Setup logging
+        self.logger = util.get_logger(
+            self.logname, self.logs.log_file, self.logs.log_level, 0)
+        # Set up separate logging for exceptions
+        self.exc_logger = util.get_logger(
+            self.exc_logname, self.logs.log_exc_file, logging.DEBUG, 1)
+
+        self.host_cache = util.HostCache(self.config.host_cache_timeout)
 
     ## Event Handlers
 
@@ -51,7 +67,6 @@ class SS2Core(app_manager.RyuApp, SS2App):
         "Handle new datapaths attaching to Ryu"
 
         msgs = self.add_datapath(ev.msg.datapath)
-
         self.send_msgs(ev.msg.datapath, msgs)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
@@ -81,6 +96,7 @@ class SS2Core(app_manager.RyuApp, SS2App):
 
     def add_datapath(self, dp):
         "Add the specified datapath to our app by adding default rules"
+        self.logger.info('Adding datapath %d',dp.id)
 
         msgs = self.clean_all_flows(dp)
         msgs += self.add_default_flows(dp)
@@ -209,3 +225,4 @@ class SS2Core(app_manager.RyuApp, SS2App):
                              match=match,
                              instructions=instructions,
                              priority=self.config.priority_high)]
+

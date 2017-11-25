@@ -24,7 +24,9 @@ Utilities for Simple Switch 2.0 (SS2)
 """
 
 import logging
-import time
+import time, os, signal
+from logging.handlers import WatchedFileHandler
+from functools import wraps
 
 class _HostCacheEntry(object):
     "Basic class to hold data on a cached host"
@@ -41,7 +43,7 @@ class HostCache(object):
 
     def __init__(self, timeout):
         self.cache = {}
-        self.logger = logging.getLogger("SS2HostCache")
+        self.logger = logging.getLogger("SS2")
         self.timeout = timeout
 
     def is_new_host(self, dpid, port, mac):
@@ -71,3 +73,32 @@ class HostCache(object):
                                   host.dpid, host.port, host.mac, host.counter)
 
         self.cache = _cleaned_cache
+
+### added
+def get_logger(logname, logfile, loglevel, propagate):
+    """Create and return a logger object."""
+    logger = logging.getLogger(logname)
+    logger_handler = WatchedFileHandler(logfile)
+    log_fmt = '%(asctime)s %(name)-6s %(levelname)-8s %(message)s'
+    logger_handler.setFormatter(
+        logging.Formatter(log_fmt, '%b %d %H:%M:%S'))
+    logger.addHandler(logger_handler)
+    logger.propagate = propagate
+    logger.setLevel(loglevel)
+    return logger
+
+def kill_on_exception(logname):
+    """decorator to ensure functions will kill ryu when an unhandled exception
+    occurs"""
+    def _koe(func):
+        @wraps(func)
+        def __koe(*args, **kwargs):
+            try:
+                func(*args, **kwargs)
+            except:
+                logging.getLogger(logname).exception(
+                    'Unhandled exception, killing RYU')
+                logging.shutdown()
+                os.kill(os.getpid(), signal.SIGTERM)
+        return __koe
+    return _koe
