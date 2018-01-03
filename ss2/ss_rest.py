@@ -67,7 +67,7 @@ class SS2REST(SS2Core):
         self.dpset = kwargs['dpset']
         self.data = {}
         self.data['dpset'] = self.dpset
-        self.data[switch_instance_name] = self
+        #self.data[switch_instance_name] = self
         # Registers the controller class 
         wsgi.register(RyuSwitchController, self.data) #{switch_instance_name: self})
         # The register method calls the following line
@@ -82,7 +82,7 @@ class SS2REST(SS2Core):
 class RyuSwitchController(ControllerBase):
     def __init__(self, req, link, data, **config):
         super(RyuSwitchController, self).__init__(req, link, data, **config)
-        self.switch = data[switch_instance_name] # passed in the registration
+        #self.switch = data[switch_instance_name] # passed in the registration
         self.dpset = data['dpset']
         
         
